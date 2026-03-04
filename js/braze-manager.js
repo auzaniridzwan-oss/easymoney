@@ -109,11 +109,11 @@ const BrazeManager = {
     try {
       window.braze.changeUser(user.external_id);
 
-      window.braze.getUser().setFirstName(user.first_name);
+      /* window.braze.getUser().setFirstName(user.first_name);
       window.braze.getUser().setLastName(user.last_name);
       window.braze.getUser().setEmail(user.email);
       window.braze.getUser().setPhoneNumber(user.phone);
-      window.braze.getUser().setCountry(user.country);
+      window.braze.getUser().setCountry(user.country); */
 
       window.braze.getUser().setCustomUserAttribute('app_version', AppConfig.app.version);
       window.braze.getUser().setCustomUserAttribute('platform', AppConfig.app.platform);

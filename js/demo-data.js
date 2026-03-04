@@ -9,8 +9,8 @@ export const TEST_USER = {
   external_id: 'emth_1',
   first_name: 'Auzani',
   last_name: 'Ridzwan',
-  email: 'auzani.ridzwan+emth01@braze.coo',
-  phone: '+66123456789',
+  email: 'auzani.ridzwan+emth01@braze.com',
+  phone: '+6588414911',
   country: 'TH',
 };
 
