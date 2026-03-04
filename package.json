@@ -1,0 +1,10 @@
+{
+  "name": "easymoney-marketplace",
+  "version": "1.0.0",
+  "description": "A Mobile-First Web Application with iPhone Frame Layout — Braze WebSDK Demo",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static site — no build step required'"
+  }
+}

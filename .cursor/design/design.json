@@ -1,0 +1,195 @@
+{
+    "project_name": "UniqueItemMarketplace",
+    "design_system": {
+        "colors": {
+            "primary": "#C62828",
+            "secondary": "#F8F8F8",
+            "text_main": "#333333",
+            "text_muted": "#888888",
+            "accent_discount": "#FF5252",
+            "border": "#EEEEEE",
+            "white": "#FFFFFF"
+        },
+        "spacing": {
+            "base": 8,
+            "container_padding": 16,
+            "card_gap": 12
+        },
+        "border_radius": {
+            "small": 4,
+            "medium": 8,
+            "large": 12,
+            "round": 50
+        }
+    },
+    "layout_structure": {
+        "navigation": {
+            "type": "BottomTabNav",
+            "items": [
+                {
+                    "label": "Home",
+                    "icon": "home_outline"
+                },
+                {
+                    "label": "Store",
+                    "icon": "storefront",
+                    "active": true
+                },
+                {
+                    "label": "Coupons",
+                    "icon": "ticket_outline"
+                },
+                {
+                    "label": "Cart",
+                    "icon": "shopping_cart_outline",
+                    "badge": "numeric"
+                },
+                {
+                    "label": "Profile",
+                    "icon": "person_outline"
+                }
+            ]
+        },
+        "header": {
+            "home_header": {
+                "elements": [
+                    "Logo",
+                    "Search_Icon"
+                ],
+                "style": "sticky_top"
+            },
+            "sub_page_header": {
+                "elements": [
+                    "Back_Button",
+                    "Title_Center",
+                    "Action_Icon"
+                ],
+                "style": "solid_background"
+            }
+        }
+    },
+    "screens": [
+        {
+            "name": "HomeFeed",
+            "sections": [
+                {
+                    "component": "PromoBannerCarousel",
+                    "aspect_ratio": "16:7"
+                },
+                {
+                    "component": "CategoryGrid",
+                    "rows": 2,
+                    "cols": 4
+                },
+                {
+                    "component": "FilterTabs",
+                    "labels": [
+                        "Hot Deals",
+                        "New Arrivals",
+                        "Rare Items"
+                    ]
+                },
+                {
+                    "component": "ProductGrid",
+                    "type": "TwoColumn"
+                }
+            ]
+        },
+        {
+            "name": "SearchAndFilter",
+            "elements": [
+                {
+                    "component": "SearchBar",
+                    "placeholder": "Search items..."
+                },
+                {
+                    "component": "FilterChips",
+                    "scroll_direction": "horizontal"
+                },
+                {
+                    "component": "ProductGrid",
+                    "type": "TwoColumn"
+                }
+            ]
+        },
+        {
+            "name": "ProductDetail",
+            "elements": [
+                {
+                    "component": "ImageGallery",
+                    "pagination": "numeric_fraction"
+                },
+                {
+                    "component": "PriceTag",
+                    "show_original": true,
+                    "show_discount": true
+                },
+                {
+                    "component": "SellerContactCard",
+                    "actions": [
+                        "Call",
+                        "LineChat",
+                        "ViewStore"
+                    ]
+                },
+                {
+                    "component": "DescriptionText",
+                    "title": "Details"
+                },
+                {
+                    "component": "BottomStickyAction",
+                    "buttons": [
+                        "Back",
+                        "AddToCart_Primary"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "ShoppingCart",
+            "elements": [
+                {
+                    "component": "CartItemList",
+                    "behavior": "UniqueItemOnly"
+                },
+                {
+                    "component": "CouponSelector",
+                    "style": "row_entry"
+                },
+                {
+                    "component": "TotalSummary",
+                    "fields": [
+                        "Discount",
+                        "GrandTotal"
+                    ]
+                },
+                {
+                    "component": "CheckoutButton",
+                    "style": "full_width_red"
+                }
+            ]
+        }
+    ],
+    "reusable_components": {
+        "ProductCard": {
+            "elements": [
+                "StatusBadge_TopLeft",
+                "GradeBadge_TopRight",
+                "ThumbnailImage",
+                "TitleText_LineLimit_2",
+                "DiscountPriceRow",
+                "FinalPriceText"
+            ],
+            "styling": {
+                "background": "#FFFFFF",
+                "shadow": "subtle",
+                "padding": 8
+            }
+        },
+        "CategoryIcon": {
+            "shape": "circle",
+            "image_size": "large",
+            "text_placement": "bottom"
+        }
+    }
+}
