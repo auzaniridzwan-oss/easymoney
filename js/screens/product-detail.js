@@ -184,6 +184,7 @@ export default function renderProductDetail(container, productId) {
         id: product.id,
         title: product.title,
         price: product.price,
+        category: product.category,
         thumbnail: product.thumbnail,
       });
       StorageManager.set('cart', cart);
