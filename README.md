@@ -69,6 +69,16 @@ The `#phone-frame` container (390x844px) provides a realistic iOS device simulat
 - **Name**: Alex Tan
 - **Email**: alex.tan@easymoney.demo
 
+### Content Card toasts (push-style)
+
+To surface a **Captioned Image** card as a top-of-app toast (like a push notification):
+
+1. In Braze, create a **Captioned Image** Content Card with **Title**, **Description**, and **Image**.
+2. Add a **Key-Value Pair**: `type` = `toast`.
+3. On refresh, the SDK delivers the card; the app shows the **most recent** toast in the batch (last card in the update).
+
+See [Content Cards](https://www.braze.com/docs/developer_guide/sdk_integration/?sdktab=web) and the Web SDK [ContentCards](https://js.appboycdn.com/web-sdk/latest/doc/classes/braze.contentcards.html) / [CaptionedImage](https://js.appboycdn.com/web-sdk/latest/doc/classes/braze.captionedimage.html) references.
+
 ### SDK Reference
 
 [Braze WebSDK Documentation](https://www.braze.com/docs/developer_guide/sdk_integration/?sdktab=web)

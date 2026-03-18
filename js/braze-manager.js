@@ -138,11 +138,20 @@ const BrazeManager = {
       return false;
     });
 
-    window.braze.subscribeToContentCardsUpdates((cards) => {
-      const banners = cards.filter(c => c.extras && c.extras.type === 'banner');
-      AppLogger.info('SDK', 'Content Cards Updated', { count: cards.length, banners: banners.length });
+    window.braze.subscribeToContentCardsUpdates((payload) => {
+      const list = Array.isArray(payload) ? payload : (payload?.cards ?? []);
+      const banners = list.filter(c => c.extras && String(c.extras.type) === 'banner');
+      const toasts = list.filter(c => c.extras && String(c.extras.type) === 'toast');
+      AppLogger.info('SDK', 'Content Cards Updated', {
+        count: list.length,
+        banners: banners.length,
+        toasts: toasts.length,
+      });
       if (banners.length > 0) {
         document.dispatchEvent(new CustomEvent('braze:banners', { detail: banners }));
+      }
+      if (toasts.length > 0) {
+        document.dispatchEvent(new CustomEvent('braze:toasts', { detail: toasts }));
       }
     });
 

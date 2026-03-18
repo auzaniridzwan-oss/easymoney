@@ -10,6 +10,7 @@ import Router from './router.js';
 import BottomNav from './components/bottom-nav.js';
 import Header from './components/header.js';
 import DebugOverlay from './components/debug-overlay.js';
+import BrazeToast from './components/braze-toast.js';
 
 import renderHomeFeed from './screens/home-feed.js';
 import renderSearchFilter from './screens/search-filter.js';
@@ -26,6 +27,7 @@ async function boot() {
   AppLogger.info('SYSTEM', `${AppConfig.app.name} v${AppConfig.app.version} starting...`);
 
   Header.init(document.getElementById('app-header'));
+  BrazeToast.init(document.getElementById('phone-frame'));
 
   await BrazeManager.load();
 
