@@ -7,6 +7,7 @@ import AppConfig from './config.js';
 import AppLogger from './app-logger.js';
 import StorageManager from './storage-manager.js';
 import { TEST_USER } from './demo-data.js';
+import BrazeToast from './components/braze-toast.js';
 
 const BrazeManager = {
   _initialized: false,
@@ -167,9 +168,11 @@ const BrazeManager = {
     const container = document.getElementById('phone-frame');
     if (!container) return;
 
-    /*  if (window.braze && window.braze.showInAppMessage) {
-       window.braze.showInAppMessage(inAppMessage);
-     } */
+    try {
+      BrazeToast.showForInAppMessage(inAppMessage);
+    } catch (e) {
+      AppLogger.error('SDK', 'IAM render failed', e?.message || String(e));
+    }
   },
 
   /**

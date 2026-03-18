@@ -1,6 +1,6 @@
 /**
- * Braze Content Card toast — push-style notification at top of #phone-frame.
- * Listens for `braze:toasts` (CaptionedImage cards with extras.type === 'toast').
+ * Braze toast — push-style notification at top of #phone-frame.
+ * Content Cards via `braze:toasts`; In-App Messages via `showForInAppMessage`.
  * @module BrazeToast
  */
 import AppLogger from '../app-logger.js';
@@ -11,6 +11,8 @@ const AUTO_DISMISS_MS = 5000;
 let _host = null;
 /** @type {ReturnType<typeof setTimeout>|null} */
 let _dismissTimer = null;
+/** @type {(() => void)|null} */
+let _onDismissCallback = null;
 let _initialized = false;
 
 /**
@@ -49,11 +51,19 @@ function _clearToastDOM() {
 }
 
 /**
- * Hides toast and clears timers.
+ * Hides toast, invokes dismiss callback, clears timers.
  * @private
  */
 function _hide() {
   _clearTimer();
+  if (_onDismissCallback) {
+    try {
+      _onDismissCallback();
+    } catch (e) {
+      AppLogger.warn('UI', 'Braze toast onDismiss failed', e.message);
+    }
+    _onDismissCallback = null;
+  }
   _clearToastDOM();
 }
 
@@ -87,17 +97,41 @@ function _logClick(card) {
 }
 
 /**
- * Renders a single toast for the given Braze card (last/most recent when batch).
- * @param {Object} card - CaptionedImage content card from Braze.
+ * Renders toast UI from a plain payload (shared by content cards and IAM).
+ * @param {Object} opts
+ * @param {string} opts.title - Header line.
+ * @param {string} opts.description - Body text.
+ * @param {string} [opts.imageUrl=''] - Optional image URL.
+ * @param {string} [opts.alt=''] - Image alt text.
+ * @param {number} opts.dismissMs - Auto-hide after this many ms.
+ * @param {() => void} [opts.onImpression] - After mount (analytics).
+ * @param {() => void} [opts.onDismiss] - On timer or dismiss button (analytics).
+ * @param {(ev: MouseEvent) => void} [opts.onRowClick] - Row tap handler (overrides default URL open).
  * @private
  */
-function _showForCard(card) {
+function _showToastPayload(opts) {
   if (!_host) return;
+
+  const {
+    title,
+    description,
+    imageUrl = '',
+    alt = '',
+    dismissMs,
+    onImpression,
+    onDismiss,
+    onRowClick,
+  } = opts;
 
   _hide();
 
-  const { title, description, imageUrl, alt, url } = mapCaptionedImageCard(card);
-  _logImpression(card);
+  _onDismissCallback = typeof onDismiss === 'function' ? onDismiss : null;
+
+  try {
+    onImpression?.();
+  } catch (e) {
+    AppLogger.warn('SDK', 'Toast onImpression failed', e.message);
+  }
 
   const wrap = document.createElement('div');
   wrap.className = 'braze-toast-inner';
@@ -106,14 +140,16 @@ function _showForCard(card) {
   const row = document.createElement('div');
   row.className = 'braze-toast-row';
 
-  if (url) {
+  const handleRowClick = onRowClick
+    ? (ev) => {
+        if (ev.target.closest('.braze-toast-dismiss')) return;
+        onRowClick(ev);
+      }
+    : null;
+
+  if (handleRowClick) {
     row.style.cursor = 'pointer';
-    row.addEventListener('click', (ev) => {
-      if (ev.target.closest('.braze-toast-dismiss')) return;
-      _logClick(card);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      _hide();
-    });
+    row.addEventListener('click', handleRowClick);
   }
 
   if (imageUrl) {
@@ -122,6 +158,13 @@ function _showForCard(card) {
     img.src = imageUrl;
     img.alt = alt || '';
     img.loading = 'lazy';
+    img.addEventListener('error', () => {
+      try {
+        img.remove();
+      } catch (e) {
+        /* ignore */
+      }
+    });
     row.appendChild(img);
   }
 
@@ -154,8 +197,108 @@ function _showForCard(card) {
   wrap.appendChild(row);
   _host.appendChild(wrap);
 
-  _dismissTimer = setTimeout(() => _hide(), AUTO_DISMISS_MS);
+  const ms = typeof dismissMs === 'number' && dismissMs > 0 ? dismissMs : AUTO_DISMISS_MS;
+  _dismissTimer = setTimeout(() => _hide(), ms);
   AppLogger.info('UI', 'Braze toast shown', { title });
+}
+
+/**
+ * Renders a single toast for the given Braze card (last/most recent when batch).
+ * @param {Object} card - CaptionedImage content card from Braze.
+ * @private
+ */
+function _showForCard(card) {
+  const { title, description, imageUrl, alt, url } = mapCaptionedImageCard(card);
+  _showToastPayload({
+    title: title || 'Notification',
+    description,
+    imageUrl,
+    alt,
+    dismissMs: AUTO_DISMISS_MS,
+    onImpression: () => _logImpression(card),
+    onRowClick: url
+      ? () => {
+          _logClick(card);
+          window.open(url, '_blank', 'noopener,noreferrer');
+          _hide();
+        }
+      : null,
+  });
+}
+
+/**
+ * Resolves optional IAM open URL from instance and extras (defensive).
+ * @param {Object} iam - Braze InAppMessage.
+ * @returns {string}
+ * @private
+ */
+function _iamOpenUrl(iam) {
+  try {
+    const u = iam.uri ?? iam.url;
+    if (typeof u === 'string' && u.trim()) return u.trim();
+  } catch (e) {
+    /* ignore */
+  }
+  try {
+    const ex = iam.extras && typeof iam.extras === 'object' ? iam.extras : {};
+    for (const key of ['link_url', 'url', 'uri']) {
+      const v = ex[key];
+      if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  return '';
+}
+
+/**
+ * Picks a title string for IAM toast from extras / messageExtras.
+ * @param {Object} iam
+ * @returns {string}
+ * @private
+ */
+function _iamTitle(iam) {
+  try {
+    const ex = iam.extras && typeof iam.extras === 'object' ? iam.extras : {};
+    if (typeof ex.title === 'string' && ex.title.trim()) return ex.title.trim();
+    if (typeof ex.heading === 'string' && ex.heading.trim()) return ex.heading.trim();
+  } catch (e) {
+    /* ignore */
+  }
+  try {
+    const mx = iam.messageExtras && typeof iam.messageExtras === 'object' ? iam.messageExtras : {};
+    for (const k of ['title', 'heading', 'subject']) {
+      const v = mx[k];
+      if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+    for (const v of Object.values(mx)) {
+      if (typeof v === 'string' && v.trim() && v.length <= 80) return v.trim();
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  return 'Message';
+}
+
+/**
+ * Computes dismiss duration for IAM (ms).
+ * @param {Object} iam
+ * @returns {number}
+ * @private
+ */
+function _iamDismissMs(iam) {
+  const auto = 'AUTO_DISMISS';
+  let isAuto = false;
+  try {
+    const DT = window.braze?.InAppMessage?.DismissType;
+    if (DT && iam.dismissType === DT.AUTO_DISMISS) isAuto = true;
+    if (String(iam.dismissType) === auto) isAuto = true;
+  } catch (e) {
+    if (String(iam.dismissType) === auto) isAuto = true;
+  }
+  const d = Number(iam.duration);
+  if (isAuto && d > 0) return d;
+  return AUTO_DISMISS_MS;
 }
 
 /**
@@ -187,6 +330,91 @@ const BrazeToast = {
 
     document.addEventListener('braze:toasts', _onToasts);
     AppLogger.info('UI', 'BrazeToast initialized');
+  },
+
+  /**
+   * Renders a Braze In-App Message as the standard toast. Requires non-empty `message`.
+   * Analytics use SDK methods when present (`logInAppMessageImpression`, etc.); behavior varies by SDK build.
+   * @param {Object|null|undefined} inAppMessage - Braze InAppMessage instance.
+   * @returns {void}
+   */
+  showForInAppMessage(inAppMessage) {
+    if (inAppMessage == null) {
+      AppLogger.warn('SDK', 'IAM toast skipped: missing inAppMessage');
+      return;
+    }
+    if (inAppMessage.isControl === true) {
+      return;
+    }
+    const body =
+      typeof inAppMessage.message === 'string' ? inAppMessage.message.trim() : '';
+    if (!body) {
+      AppLogger.warn('SDK', 'IAM toast skipped: empty or missing message');
+      return;
+    }
+
+    if (!_host) {
+      AppLogger.warn('UI', 'IAM toast skipped: BrazeToast host not initialized');
+      return;
+    }
+
+    const title = _iamTitle(inAppMessage);
+    let imageUrl = '';
+    try {
+      const iu = inAppMessage.imageUrl ?? inAppMessage.image;
+      if (typeof iu === 'string' && iu.trim()) imageUrl = iu.trim();
+    } catch (e) {
+      /* ignore */
+    }
+    const openUrl = _iamOpenUrl(inAppMessage);
+    const dismissMs = _iamDismissMs(inAppMessage);
+    const iam = inAppMessage;
+
+    const logIamImpression = () => {
+      if (!window.braze || typeof window.braze.logInAppMessageImpression !== 'function') return;
+      try {
+        window.braze.logInAppMessageImpression(iam);
+        AppLogger.debug('SDK', 'IAM impression logged (toast)');
+      } catch (e) {
+        AppLogger.warn('SDK', 'logInAppMessageImpression failed', e.message);
+      }
+    };
+
+    const logIamDismissed = () => {
+      if (!window.braze || typeof window.braze.logInAppMessageDismissed !== 'function') return;
+      try {
+        window.braze.logInAppMessageDismissed(iam);
+        AppLogger.debug('SDK', 'IAM dismissed logged (toast)');
+      } catch (e) {
+        AppLogger.warn('SDK', 'logInAppMessageDismissed failed', e.message);
+      }
+    };
+
+    const logIamClick = () => {
+      if (!window.braze || typeof window.braze.logInAppMessageClick !== 'function') return;
+      try {
+        window.braze.logInAppMessageClick(iam);
+      } catch (e) {
+        AppLogger.warn('SDK', 'logInAppMessageClick failed', e.message);
+      }
+    };
+
+    _showToastPayload({
+      title,
+      description: body,
+      imageUrl,
+      alt: '',
+      dismissMs,
+      onImpression: logIamImpression,
+      onDismiss: logIamDismissed,
+      onRowClick: openUrl
+        ? () => {
+            logIamClick();
+            window.open(openUrl, '_blank', 'noopener,noreferrer');
+            _hide();
+          }
+        : null,
+    });
   },
 
   /**
